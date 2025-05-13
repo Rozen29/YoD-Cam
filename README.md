@@ -26,6 +26,7 @@ Contoh: <p align="center"><img src="link_ke_demo.gif" alt="YOLO Web Detector Dem
 
 ## 📂 Struktur Proyek
 
+```bash
 ├── app.py                # Aplikasi Flask utama: MJPEG, integrasi WebRTC, API
 ├── webrtc_server.py      # (Opsional) Server demo WebRTC standalone
 ├── requirements.txt      # Daftar dependensi Python
@@ -36,7 +37,7 @@ Contoh: <p align="center"><img src="link_ke_demo.gif" alt="YOLO Web Detector Dem
 └── templates/
     ├── index.html        # Halaman web utama (streaming MJPEG & kontrol)
     └── webrtc.html       # (Opsional) Halaman demo untuk WebRTC standalone
-
+```
 
 ## 🛠️ Instalasi
 
