@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 Real-time Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .controls label { font-weight: bold; }
+        .controls select, .controls button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        .controls button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        .controls button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .controls button.stop { background-color: #dc3545; }
+        #videoFeedContainer {
+            width: 100%;
+            max-width: 720px; /* Atau sesuaikan */
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            background-color: #000; /* Background jika video belum load */
+        }
+        #videoFeed { display: block; width: 100%; height: auto; }
+        .status { margin-top: 10px; text-align: center; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YOLOv8 Real-time Object Detection</h1>
+
+        <div class="controls">
+            <label for="cameraSelect">Pilih Kamera:</label>
+            <select id="cameraSelect"></select>
+            <button id="startButton">Start Kamera</button>
+            <button id="stopButton" class="stop" disabled>Stop Kamera</button>
+            <button id="toggleDetectionButton" style="background-color:#28a745;">Deteksi: ON</button>
+            <button id="previewOnlyButton" style="background-color:#ffc107; color:#333;">Live Preview Only</button>
+            <button id="recordButton" style="background-color:#e67e22;">Mulai Rekam</button>
+        </div>
+        <div id="recordingStatus" class="status" style="color:#e67e22; font-weight:bold;">Status Rekaman: Tidak merekam</div>
+
+        <div id="videoFeedContainer">
+            <img id="videoFeed" src="" alt="Video Stream">
+            <!-- Atau gunakan tag <video> jika menggunakan HLS/DASH, tapi MJPEG lebih mudah dengan <img> -->
+        </div>
+        <div id="statusMessage" class="status">Kamera mati. Pilih kamera dan klik Start.</div>
+    </div>
+
+    <script>
+        const cameraSelect = document.getElementById('cameraSelect');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const videoFeed = document.getElementById('videoFeed');
+        const statusMessage = document.getElementById('statusMessage');
+        const toggleDetectionButton = document.getElementById('toggleDetectionButton');
+        const previewOnlyButton = document.getElementById('previewOnlyButton');
+        const recordButton = document.getElementById('recordButton');
+        const recordingStatus = document.getElementById('recordingStatus');
+
+        let isStreaming = false;
+        let detectionEnabled = true;
+        let isRecording = false;
+        let lastRecordingFile = null;
+
+        // Fungsi untuk memuat daftar kamera
+        async function loadCameras() {
+            try {
+                const response = await fetch('/list_cameras');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const cameras = await response.json();
+                cameraSelect.innerHTML = ''; // Kosongkan pilihan lama
+                if (cameras.length === 0) {
+                    const option = document.createElement('option');
+                    option.textContent = "Tidak ada kamera terdeteksi";
+                    cameraSelect.appendChild(option);
+                    startButton.disabled = true;
+                } else {
+                    cameras.forEach(cam => {
+                        const option = document.createElement('option');
+                        option.value = cam.id;
+                        option.textContent = cam.name;
+                        cameraSelect.appendChild(option);
+                    });
+                    startButton.disabled = false;
+                }
+            } catch (error) {
+                console.error("Error loading cameras:", error);
+                statusMessage.textContent = "Error memuat daftar kamera.";
+                startButton.disabled = true;
+            }
+        }
+
+        // Fungsi untuk memulai stream
+        async function startStream() {
+            if (isStreaming) return;
+            const selectedCameraId = cameraSelect.value;
+            if (selectedCameraId === null || selectedCameraId === "" || selectedCameraId === "Tidak ada kamera terdeteksi") {
+                statusMessage.textContent = "Pilih kamera yang valid.";
+                return;
+            }
+
+            statusMessage.textContent = "Memulai kamera...";
+            startButton.disabled = true;
+
+            try {
+                const response = await fetch('/start_camera', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ camera_id: parseInt(selectedCameraId) })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.status === 'started') {
+                    // Tambahkan timestamp untuk mencegah caching browser
+                    videoFeed.src = `/video_feed?t=${new Date().getTime()}`;
+                    isStreaming = true;
+                    stopButton.disabled = false;
+                    statusMessage.textContent = `Streaming dari ${cameraSelect.options[cameraSelect.selectedIndex].text}...`;
+                } else {
+                    throw new Error(data.error || "Gagal memulai kamera dari backend.");
+                }
+            } catch (error) {
+                console.error("Error starting stream:", error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                startButton.disabled = false; // Izinkan coba lagi
+            }
+        }
+
+        // Fungsi untuk menghentikan stream
+        async function stopStream() {
+            if (!isStreaming) return;
+            statusMessage.textContent = "Menghentikan kamera...";
+            stopButton.disabled = true;
+
+            try {
+                const response = await fetch('/stop_camera', { method: 'POST' });
+                 if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                 if (data.status === 'stopped') {
+                    videoFeed.src = ""; // Hapus source gambar
+                    isStreaming = false;
+                    startButton.disabled = false;
+                    statusMessage.textContent = "Kamera mati.";
+                } else {
+                    throw new Error(data.error || "Gagal menghentikan kamera dari backend.");
+                }
+            } catch (error) {
+                console.error("Error stopping stream:", error);
+                statusMessage.textContent = `Error: ${error.message}`;
+                // Biarkan stopButton disabled jika error, atau re-enable tergantung kebutuhan
+                // stopButton.disabled = false; // Mungkin tidak ideal
+                startButton.disabled = false; // Izinkan start lagi
+            }
+        }
+
+        async function toggleDetection() {
+            const enable = !detectionEnabled;
+            try {
+                const response = await fetch('/toggle_detection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enable })
+                });
+                const data = await response.json();
+                detectionEnabled = data.object_detection_enabled;
+                toggleDetectionButton.textContent = detectionEnabled ? 'Deteksi: ON' : 'Deteksi: OFF';
+                toggleDetectionButton.style.backgroundColor = detectionEnabled ? '#28a745' : '#6c757d';
+                statusMessage.textContent = detectionEnabled ? 'Mode deteksi aktif.' : 'Mode deteksi dimatikan.';
+            } catch (error) {
+                statusMessage.textContent = 'Gagal toggle deteksi.';
+            }
+        }
+
+        async function setPreviewOnly() {
+            try {
+                const response = await fetch('/toggle_preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                detectionEnabled = false;
+                toggleDetectionButton.textContent = 'Deteksi: OFF';
+                toggleDetectionButton.style.backgroundColor = '#6c757d';
+                statusMessage.textContent = 'Live preview only (tanpa deteksi/track).';
+            } catch (error) {
+                statusMessage.textContent = 'Gagal set preview only.';
+            }
+        }
+
+        async function startRecording() {
+            recordButton.disabled = true;
+            try {
+                const response = await fetch('/start_recording', { method: 'POST' });
+                const data = await response.json();
+                if (data.status === 'recording') {
+                    isRecording = true;
+                    lastRecordingFile = data.filename;
+                    recordButton.textContent = 'Stop Rekam';
+                    recordingStatus.textContent = 'Status Rekaman: Merekam...';
+                    recordButton.style.backgroundColor = '#dc3545';
+                } else if (data.status === 'already_recording') {
+                    isRecording = true;
+                    recordButton.textContent = 'Stop Rekam';
+                    recordingStatus.textContent = 'Status Rekaman: Merekam...';
+                    recordButton.style.backgroundColor = '#dc3545';
+                } else {
+                    recordingStatus.textContent = 'Gagal mulai merekam.';
+                }
+            } catch (e) {
+                recordingStatus.textContent = 'Gagal mulai merekam.';
+            }
+            recordButton.disabled = false;
+        }
+
+        async function stopRecording() {
+            recordButton.disabled = true;
+            try {
+                const response = await fetch('/stop_recording', { method: 'POST' });
+                const data = await response.json();
+                if (data.status === 'stopped') {
+                    isRecording = false;
+                    recordButton.textContent = 'Mulai Rekam';
+                    recordingStatus.textContent = 'Status Rekaman: Tidak merekam';
+                    recordButton.style.backgroundColor = '#e67e22';
+                    if (data.filename) {
+                        // Tampilkan link untuk memutar hasil rekaman
+                        recordingStatus.innerHTML += `<br><a href="/play_recording" target="_blank">Putar Rekaman Terakhir</a>`;
+                    }
+                } else {
+                    recordingStatus.textContent = 'Gagal stop rekaman.';
+                }
+            } catch (e) {
+                recordingStatus.textContent = 'Gagal stop rekaman.';
+            }
+            recordButton.disabled = false;
+        }
+
+        recordButton.addEventListener('click', function() {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        startButton.addEventListener('click', startStream);
+        stopButton.addEventListener('click', stopStream);
+        toggleDetectionButton.addEventListener('click', toggleDetection);
+        previewOnlyButton.addEventListener('click', setPreviewOnly);
+
+        // Muat daftar kamera saat halaman dimuat
+        window.onload = loadCameras;
+    </script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -172,3 +173,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+=======
+__pycache__/\n*.pyc\nvenv/\n.env\nrecording/*.mp4\n*.pt\n
+>>>>>>> 64b6693 (Initial commit: YOLO Web Detector & Streaming)

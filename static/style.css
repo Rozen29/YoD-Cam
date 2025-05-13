@@ -1,0 +1,89 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #0056b3;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+}
+
+.controls label {
+    font-weight: bold;
+}
+
+.controls select, .controls button {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.controls button {
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.controls button:hover {
+    background-color: #0056b3;
+}
+
+.controls button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.controls button.stop {
+    background-color: #dc3545;
+}
+.controls button.stop:hover {
+    background-color: #c82333;
+}
+
+
+#videoFeedContainer {
+    width: 100%;
+    max-width: 720px; /* Sesuaikan dengan preferensi Anda */
+    margin: 20px auto;
+    border: 2px solid #ddd;
+    background: #333 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z'/%3E%3C/svg%3E") center no-repeat;
+    background-size: 50px; /* Ukuran ikon placeholder */
+    min-height: 240px; /* Tinggi minimum jika video belum ada */
+}
+
+#videoFeed {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.status {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.9em;
+    color: #555;
+}
