@@ -1,7 +1,10 @@
 Flask
-torch
-torchvision
-numpy
 opencv-python
-Pillow
-requests
+ultralytics
+numpy
+av
+aiortc
+aiohttp
+werkzeug
+python-dotenv  # For .env file
+requests       # For making HTTP requests to Node.js
