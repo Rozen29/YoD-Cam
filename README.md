@@ -60,8 +60,8 @@ Contoh: <p align="center"><img src="link_ke_demo.gif" alt="YOLO Web Detector Dem
 
 1.  **Clone Repositori:**
     ```bash
-    git clone <URL_REPO_ANDA>
-    cd <NAMA_FOLDER_PROYEK>
+    git clone https://github.com/Rozen29/YoD-Cam.git
+    cd YoD-Cam
     ```
 
 2.  **(Sangat Direkomendasikan) Buat dan Aktifkan Virtual Environment Python:**
